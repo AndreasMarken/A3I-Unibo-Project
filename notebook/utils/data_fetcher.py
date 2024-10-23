@@ -25,9 +25,6 @@ class DataFetcher():
         self.download_url(url=url, download_path=download_path)
         print("Download complete!")
 
-    def print_folder_path(self):
-        print(self.DATA_FOLDER_PATH)
-
     def main(self):
         if not self.DATA_FOLDER_PATH.exists():
             self.DATA_FOLDER_PATH.mkdir(parents=True)
@@ -47,10 +44,10 @@ class DataFetcher():
                     continue
 
                 try:
-                    self.download_dataset(download_path, request_url)    
+                    self.download_dataset(download_path=download_path, url=request_url)    
                 except:
                     print(f"{request_url} does not exist.")
 
 if __name__ == "__main__":
-    data_fetcher = DataFetcher(DATA_FOLDER_PATH=Path.cwd().joinpath("data"))
+    data_fetcher = DataFetcher(DATADATA_FOLDER_PATH=Path.cwd().joinpath("data"))
     data_fetcher.main()
