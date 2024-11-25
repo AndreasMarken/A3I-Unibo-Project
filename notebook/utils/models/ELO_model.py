@@ -6,10 +6,9 @@ import numpy as np
 from sklearn.model_selection import ParameterGrid
 import pandas as pd
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-class ELORatingSystem:
-    def __init__(self, initial_rating: int = 1500, alpha: int = 20, normalization_constand_cdf: int = 400, sharpening_factor: float = 1.0, home_advantage: int = 50, momentum_boost: float = 10, draw_difference_requirement: float = 0.2):
+class ELOModel:
+    def __init__(self, initial_rating: int = 1500, alpha: int = 20, normalization_constand_cdf: int = 400, sharpening_factor: float = 1.0, home_advantage: int = 50, momentum_boost: float = 10, draw_factor: float = 0.2, seed: Optional[int] = 42):
         self.ratings = {}
         self.initial_rating = initial_rating
         self.alpha = alpha
@@ -19,7 +18,9 @@ class ELORatingSystem:
         self.home_advantage = home_advantage
         self.momentum_boost = momentum_boost
         self.streaks = {}
-        self.draw_difference_requirement = draw_difference_requirement
+        self.draw_factor = draw_factor
+
+        np.random.seed(seed)
 
     def get_rating(self, team: str) -> int:
         return self.ratings.get(team, self.initial_rating)
@@ -44,10 +45,16 @@ class ELORatingSystem:
 
         expected_home_team = logistic.cdf((rating_home_team - rating_away_team) / (self.normalization_constand_cdf * self.sharpening_factor))
         expected_away_team = 1 - expected_home_team
-        return expected_home_team, expected_away_team
+
+        expected_draw = self.draw_factor * (1 - abs(expected_home_team - expected_away_team))
+
+        expected_home_team -= expected_draw / 2
+        expected_away_team -= expected_draw / 2
+
+        return expected_home_team, expected_draw, expected_away_team
 
     def update_ratings(self, home_team: str, away_team: str, result: float, recency_parameter: float = 1.0) -> None:
-        expected_home_team, expected_away_team = self.calculate_expected_score(home_team, away_team)
+        expected_home_team, expected_draw, expected_away_team = self.calculate_expected_score(home_team, away_team)
         rating_home_team = self.get_rating(home_team)
         rating_away_team = self.get_rating(away_team)
 
@@ -94,19 +101,14 @@ class ELORatingSystem:
         )
 
         
-        return match_data[['HomeTeam', 'AwayTeam', 'Prediction', 'FTR']]
+        return match_data[['HomeTeam', 'AwayTeam', 'Prediction', 'FTR', 'B365H', 'B365D', 'B365A']]
 
 
     def _get_match_outcome(self, home_team: str, away_team: str) -> str:
-        home_expected_score, away_expected_score = self.calculate_expected_score(home_team, away_team)
-
-        diff = abs(home_expected_score - away_expected_score)
-
-        if diff < self.draw_difference_requirement:
-            return 'D'
+        home_expected_score, expected_draw, away_expected_score = self.calculate_expected_score(home_team, away_team)
         
-        probabilities = [home_expected_score, away_expected_score]
-        outcomes = ['H', 'A']
+        probabilities = [home_expected_score, expected_draw, away_expected_score]
+        outcomes = ['H', 'D', 'A']
         return np.random.choice(outcomes, p=probabilities)
 
     def plot_ratings(self, top_k: int = 5) -> None:
@@ -214,7 +216,7 @@ class ELORatingSystem:
 
         print('Coarse grid search...')
         for params in tqdm(ParameterGrid(coarse_param_grid)):
-            model = ELORatingSystem(**params)
+            model = ELOModel(**params)
             accuracy = model.cross_validate(match_data, n_folds)
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
@@ -229,12 +231,12 @@ class ELORatingSystem:
             'sharpening_factor': [max(0.5, best_params['sharpening_factor'] - 0.25), best_params['sharpening_factor'], best_params['sharpening_factor'] + 0.25],
             'home_advantage': [max(0, best_params['home_advantage'] - 25), best_params['home_advantage'], best_params['home_advantage'] + 25],
             'momentum_boost': [max(0, best_params['momentum_boost'] - 5), best_params['momentum_boost'], best_params['momentum_boost'] + 5],
-            'draw_difference_requirement': [max(0, best_params['draw_difference_requirement'] - 0.05), best_params['draw_difference_requirement'], best_params['draw_difference_requirement'] + 0.5]
+            'draw_factor': [max(0, best_params['draw_factor'] - 0.05), best_params['draw_factor'], best_params['draw_factor'] + 0.5]
         }
 
         print('Refined grid search...')
         for params in tqdm(ParameterGrid(refined_grid)):
-            model = ELORatingSystem(**params)
+            model = ELOModel(**params)
             accuracy = model.cross_validate(match_data, n_folds)
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
@@ -249,6 +251,6 @@ class ELORatingSystem:
             pickle.dump(self, f)
 
     @staticmethod
-    def load_model(filepath: str) -> 'ELORatingSystem':
+    def load_model(filepath: str) -> 'ELOModel':
         with open(filepath, 'rb') as f:
             return pickle.load(f)
