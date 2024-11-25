@@ -6,7 +6,8 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np
 from .data_fetcher import WANTED_SEASONS
 
-WANTED_DATA_COLUMNS = ["Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR", "B365H", "B365D", "B365A"]
+# WANTED_DATA_COLUMNS = ["Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR", "B365H", "B365D", "B365A"]
+ALL_DATA_COLUMNS = ["Div","Date","HomeTeam","AwayTeam","FTHG","FTAG","FTR","HTHG","HTAG","HTR","Referee","HS","AS","HST","AST","HF","AF","HC","AC","HY","AY","HR","AR", "B365H", "B365D", "B365A"]
 
 class DataAggregator():
     RECENCY_PARAMETER = 0.01
@@ -15,7 +16,7 @@ class DataAggregator():
     def __init__(self, DATA_FOLDER_PATH=Path.cwd().joinpath("..", "data")):
         self.DATA_FOLDER_PATH = DATA_FOLDER_PATH
 
-    def read_csv(self, file_path: Path, wanted_features: List[str]) -> pd.DataFrame:
+    def read_csv(self, file_path: Path, wanted_features: List[str] = ALL_DATA_COLUMNS) -> pd.DataFrame:
         try:
             df = pd.read_csv(file_path, sep=",", usecols=wanted_features)
             return df
@@ -23,7 +24,7 @@ class DataAggregator():
             print(f"Error reading {file_path}: {e}")
             return pd.DataFrame()
 
-    def get_data(self, wanted_leagues: List[str], wanted_features: List[str], wanted_seasons: List[str] = WANTED_SEASONS) -> pd.DataFrame:
+    def get_data(self, wanted_leagues: List[str], wanted_features: List[str] = ALL_DATA_COLUMNS, wanted_seasons: List[str] = WANTED_SEASONS) -> pd.DataFrame:
         paths = []
         for subdirectory in os.listdir(self.DATA_FOLDER_PATH):
             if subdirectory not in wanted_leagues:
@@ -70,6 +71,13 @@ class DataAggregator():
 
         return new_df, team_mapping
     
+    def one_hot_encode_teams(self, df:pd.DataFrame, home_team_column: str, away_team_column: str) -> pd.DataFrame:
+        new_df = df.copy()
+        # new_df = pd.get_dummies(new_df, columns=[home_team_column, away_team_column])
+        # prefix the team with the column name to avoid duplicate columns
+        new_df = pd.get_dummies(new_df, columns=[home_team_column, away_team_column], prefix=[home_team_column, away_team_column])
+        return new_df
+    
     def encode_result(self, df: pd.DataFrame, mapping: dict, result_column: str) -> pd.DataFrame:
         new_df = df.copy()
         
@@ -98,6 +106,39 @@ class DataAggregator():
         df = pd.concat([df, home_team_win_from.rename('HomeTeamWinForm'), away_team_win_from.rename('AwayTeamWinForm')], axis=1)
 
         return df
+    
+    def create_features(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str) -> pd.DataFrame:
+        raise NotImplementedError
+    
+    def preprocess_data(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str) -> pd.DataFrame:
+        raise NotImplementedError
+    
+    def calculate_accuracy(self, df: pd.DataFrame, result_column: str, prediction_column: str) -> tuple[float, float]:
+        correct = 0
+        won = 0
+
+        bet_sum = 10
+
+        for _, row in df.iterrows():
+            if row[result_column] == row[prediction_column]:
+                correct += 1
+                if row["FTR"] == "H":
+                    won += bet_sum * row["B365H"]
+                elif row["FTR"] == "D":
+                    won += bet_sum * row["B365D"]
+                else:
+                    won += bet_sum * row["B365A"]
+            won -= bet_sum
+
+        return correct / len(df), won
+    
+    def save_metrics(self, model_name: str, accuracy: float, profit: float) -> None:
+        # append the metrics to the existing csv file
+        metrics = pd.DataFrame([[model_name, accuracy, profit]], columns=["Model", "Accuracy", "Profit"])
+        metrics.to_csv(Path.cwd().joinpath("metrics.csv"), mode="a", header=None, index=False)
+
+    def read_metrics(self) -> pd.DataFrame:
+        return pd.read_csv(Path.cwd().joinpath("metrics.csv"))
 
 if __name__ == "__main__":
     data_aggregator = DataAggregator(DATA_FOLDER_PATH=Path.cwd().joinpath("data"))
