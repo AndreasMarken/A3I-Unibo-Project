@@ -3,7 +3,6 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 
-
 def plot_column_distributions(data, cols, figsize=(12, 8)):
     plt.close("all")
     _, axes = plt.subplots(nrows=4, ncols=int(np.ceil(len(cols) // 4)), figsize=figsize)
@@ -19,6 +18,13 @@ def plot_goal_difference_distribution(data):
     plt.xlabel('Goal Difference')
     plt.ylabel('Frequency')
     plt.show()
+
+def plot_metrics(metrics):
+    plt.close("all")
+    sns.scatterplot(metrics, x='Accuracy', y='Profit', hue='Model')
+    plt.title('Model Metrics')
+    plt.show()
+
 
 
 # def create_league_table(paths : list[str] = None) -> pd.DataFrame:

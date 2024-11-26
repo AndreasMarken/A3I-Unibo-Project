@@ -56,8 +56,13 @@ class DataAggregator():
 
         new_df['Year'] = new_df[date_column].dt.year
         new_df['Month'] = new_df[date_column].dt.month
-        
+
+        new_df["Day"] = new_df[date_column].dt.day
+        new_df["DayOfWeek"] = new_df[date_column].dt.dayofweek
+
         new_df = new_df.sort_values(by=date_column).reset_index(drop=True)
+
+        new_df.drop(columns=["Date"], inplace=True)
         
         return new_df
     
@@ -138,7 +143,7 @@ class DataAggregator():
         metrics.to_csv(Path.cwd().joinpath("metrics.csv"), mode="a", header=None, index=False)
 
     def read_metrics(self) -> pd.DataFrame:
-        return pd.read_csv(Path.cwd().joinpath("metrics.csv"))
+        return pd.read_csv(Path.cwd().joinpath("metrics.csv"), index_col="Model")
 
 if __name__ == "__main__":
     data_aggregator = DataAggregator(DATA_FOLDER_PATH=Path.cwd().joinpath("data"))
