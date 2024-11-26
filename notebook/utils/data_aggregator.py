@@ -124,7 +124,7 @@ class DataAggregator():
         df = self.create_form_data(df, form_window=form_window)
         df = self.one_hot_encode_teams(df, home_team_column=home_team_column, away_team_column=away_team_column)
 
-        df.drop(columns=[date_column, "Div", "FTHG", "FTAG", "HTHG", "HTAG", "HTR", "Referee", "HS", "AS", "HST", "AST", "HF", "AF", "HC","AC","HY","AY","HR","AR"], inplace=True)
+        df.drop(columns=["Div", "FTHG", "FTAG", "HTHG", "HTAG", "HTR", "Referee", "HS", "AS", "HST", "AST", "HF", "AF", "HC","AC","HY","AY","HR","AR"], inplace=True)
 
         return df
     
