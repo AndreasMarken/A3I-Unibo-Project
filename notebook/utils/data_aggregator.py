@@ -61,8 +61,6 @@ class DataAggregator():
         new_df["DayOfWeek"] = new_df[date_column].dt.dayofweek
 
         new_df = new_df.sort_values(by=date_column).reset_index(drop=True)
-
-        new_df.drop(columns=["Date"], inplace=True)
         
         return new_df
     
@@ -78,8 +76,6 @@ class DataAggregator():
     
     def one_hot_encode_teams(self, df:pd.DataFrame, home_team_column: str, away_team_column: str) -> pd.DataFrame:
         new_df = df.copy()
-        # new_df = pd.get_dummies(new_df, columns=[home_team_column, away_team_column])
-        # prefix the team with the column name to avoid duplicate columns
         new_df = pd.get_dummies(new_df, columns=[home_team_column, away_team_column], prefix=[home_team_column, away_team_column])
         return new_df
     
@@ -97,26 +93,40 @@ class DataAggregator():
         home_team_goal_form = df.groupby('HomeTeam')['FTHG'].rolling(window=form_window).mean().reset_index(0, drop=True)
         away_team_goal_form = df.groupby('AwayTeam')['FTAG'].rolling(window=form_window).mean().reset_index(0, drop=True)
 
-        home_team_goal_form = home_team_goal_form.fillna(1)
-        away_team_goal_form = away_team_goal_form.fillna(1)
-
         df = pd.concat([df, home_team_goal_form.rename('HomeTeamGoalForm'), away_team_goal_form.rename('AwayTeamGoalForm')], axis=1)
+
+        df["HomeTeamGoalForm"] = df["HomeTeamGoalForm"].fillna(df.groupby("HomeTeam")["HomeTeamGoalForm"].transform("mean"))
+        df["AwayTeamGoalForm"] = df["AwayTeamGoalForm"].fillna(df.groupby("AwayTeam")["AwayTeamGoalForm"].transform("mean"))
 
         home_team_win_from = df.groupby('HomeTeam')['FTR'].rolling(window=form_window).apply(lambda x: (x == 1).sum() / form_window).reset_index(0, drop=True)
         away_team_win_from = df.groupby('AwayTeam')['FTR'].rolling(window=form_window).apply(lambda x: (x == -1).sum() / form_window).reset_index(0, drop=True)
 
-        home_team_win_from = home_team_win_from.fillna(0)
-        away_team_win_from = away_team_win_from.fillna(0)
-
         df = pd.concat([df, home_team_win_from.rename('HomeTeamWinForm'), away_team_win_from.rename('AwayTeamWinForm')], axis=1)
+
+        df["HomeTeamWinForm"] = df["HomeTeamWinForm"].fillna(df.groupby("HomeTeam")["HomeTeamWinForm"].transform("mean"))
+        df["AwayTeamWinForm"] = df["AwayTeamWinForm"].fillna(df.groupby("AwayTeam")["AwayTeamWinForm"].transform("mean"))
+
+        home_team_goal_against_form = df.groupby('HomeTeam')['FTAG'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        away_team_goal_against_form = df.groupby('AwayTeam')['FTHG'].rolling(window=form_window).mean().reset_index(0, drop=True)
+
+        df = pd.concat([df, home_team_goal_against_form.rename('HomeTeamGoalAgainstForm'), away_team_goal_against_form.rename('AwayTeamGoalAgainstForm')], axis=1)
+
+        df["HomeTeamGoalAgainstForm"] = df["HomeTeamGoalAgainstForm"].fillna(df.groupby("HomeTeam")["HomeTeamGoalAgainstForm"].transform("mean"))
+        df["AwayTeamGoalAgainstForm"] = df["AwayTeamGoalAgainstForm"].fillna(df.groupby("AwayTeam")["AwayTeamGoalAgainstForm"].transform("mean"))
 
         return df
     
-    def create_features(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str) -> pd.DataFrame:
-        raise NotImplementedError
-    
-    def preprocess_data(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str) -> pd.DataFrame:
-        raise NotImplementedError
+    def preprocess_data(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str, form_window: int) -> pd.DataFrame:
+        df = self.format_date(df, date_column)
+        df = self.encode_result(df,
+                                mapping={"H": 1, "D": 0, "A": -1}, 
+                                result_column=result_column)
+        df = self.create_form_data(df, form_window=form_window)
+        df = self.one_hot_encode_teams(df, home_team_column=home_team_column, away_team_column=away_team_column)
+
+        df.drop(columns=[date_column, "Div", "FTHG", "FTAG", "HTHG", "HTAG", "HTR", "Referee", "HS", "AS", "HST", "AST", "HF", "AF", "HC","AC","HY","AY","HR","AR"], inplace=True)
+
+        return df
     
     def calculate_accuracy(self, df: pd.DataFrame, result_column: str, prediction_column: str) -> tuple[float, float]:
         correct = 0
