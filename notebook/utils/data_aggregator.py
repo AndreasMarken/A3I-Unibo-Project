@@ -131,6 +131,11 @@ class DataAggregator():
 
         return df
     
+    def create_gd_feature(self, df: pd.DataFrame) -> pd.DataFrame:
+        new_df = df.copy()
+        new_df["GD"] = new_df["FTHG"] - new_df["FTAG"]
+        return new_df
+    
     def preprocess_data(self, df: pd.DataFrame, date_column: str, home_team_column: str, away_team_column: str, result_column: str, form_window: int) -> pd.DataFrame:
         df = self.format_date(df, date_column)
         df = self.encode_result(df,

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from sklearn.metrics import ConfusionMatrixDisplay
 
 def plot_column_distributions(data, cols, figsize=(12, 8)):
     plt.close("all")
@@ -25,7 +26,26 @@ def plot_metrics(metrics):
     plt.title('Model Metrics')
     plt.show()
 
+def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.Blues):
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+    disp.plot(cmap=cmap, values_format=".0f")
+    plt.title(title)
+    plt.show()
 
+def plot_confusion_matrixes(cms, classes, cmap=plt.cm.Blues):
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    axes = axes.ravel()
+
+    for i, (label, cm) in enumerate(cms.items()):
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+        disp.plot(ax=axes[i], cmap=cmap, colorbar=False)
+        axes[i].set_title(f'Confusion Matrix for model {label}')
+
+    for j in range(7, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
 
 # def create_league_table(paths : list[str] = None) -> pd.DataFrame:
 #     if paths is None:
