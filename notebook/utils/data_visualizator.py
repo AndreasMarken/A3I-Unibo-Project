@@ -42,8 +42,8 @@ def plot_confusion_matrixes(cms, classes, cmap=plt.cm.Blues):
         disp.plot(ax=axes[i], cmap=cmap, colorbar=False)
         axes[i].set_title(f'Confusion Matrix for model {label}')
 
-    for j in range(7, len(axes)):
-        fig.delaxes(axes[j])
+    # for j in range(7, len(axes)):
+    #     fig.delaxes(axes[j])
 
     plt.tight_layout()
     plt.show()
