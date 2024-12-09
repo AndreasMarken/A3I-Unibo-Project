@@ -24,6 +24,7 @@ def plot_metrics(metrics):
     plt.close("all")
     sns.scatterplot(metrics, x='Accuracy', y='Profit', hue='Model')
     plt.title('Model Metrics')
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Model')
     plt.show()
 
 def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.Blues):
