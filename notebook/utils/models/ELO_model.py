@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 
 class ELOModel:
-    def __init__(self, initial_rating: int = 1500, alpha: int = 20, normalization_constand_cdf: int = 400, sharpening_factor: float = 1.0, home_advantage: int = 50, momentum_boost: float = 10, draw_factor: float = 0.2, seed: Optional[int] = 42):
+    def __init__(self, initial_rating: int = 1500, alpha: int = 20, normalization_constand_cdf: int = 400, sharpening_factor: float = 1.0, home_advantage: int = 50, momentum_boost: float = 10, draw_factor: float = 0.2, seed: Optional[int] = 123):
         self.ratings = {}
         self.initial_rating = initial_rating
         self.alpha = alpha
@@ -83,6 +83,8 @@ class ELOModel:
             result = 0.5
         
         self.update_ratings(home_team, away_team, result, recency_parameter)
+        self.update_streak(home_team, result)
+        self.update_streak(away_team, 1 - result)
 
     def get_ratings(self) -> dict:
         return self.ratings
@@ -95,11 +97,17 @@ class ELOModel:
 
         # Generate predictions for each match
         match_data = match_data.copy()  # create a copy
-        match_data['Prediction'] = match_data.apply(
-            lambda row: self._get_match_outcome(row['HomeTeam'], row['AwayTeam']),
-            axis=1
-        )
+        # match_data['Prediction'] = match_data.apply(
+        #     lambda row: self._get_match_outcome(row['HomeTeam'], row['AwayTeam']),
+        #     axis=1
+        # )
+        for i, row in match_data.iterrows():
+            home_team = row['HomeTeam']
+            away_team = row['AwayTeam']
+            prediction = self._get_match_outcome(home_team, away_team)
+            match_data.loc[i, 'Prediction'] = prediction
 
+            self.process_match(home_team, away_team, row['FTR'])
         
         return match_data[['HomeTeam', 'AwayTeam', 'Prediction', 'FTR', 'B365H', 'B365D', 'B365A']]
 
