@@ -15,7 +15,8 @@ def plot_column_distributions(data, cols, figsize=(12, 8)):
 def plot_goal_difference_distribution(data):
     plt.close("all")
     plt.figure(figsize=(12, 8))
-    sns.histplot(data['GD'], kde=True, shrink=1, discrete=True)
+    sns.histplot(data['GD'], shrink=1, discrete=True)
+    # sns.histplot(data['GD'], kde=True, shrink=1, discrete=True)
     plt.title('Goal Difference Distribution')
     plt.xlabel('Goal Difference')
     plt.ylabel('Frequency')
