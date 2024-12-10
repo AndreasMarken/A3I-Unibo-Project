@@ -116,8 +116,8 @@ class DataAggregator():
         df['ShiftedFTR_Home'] = df.groupby('HomeTeam')['FTR'].shift(1)
         df['ShiftedFTR_Away'] = df.groupby('AwayTeam')['FTR'].shift(1)
 
-        home_team_win_from = df.groupby('HomeTeam')['ShiftedFTR_Home'].rolling(window=form_window).apply(lambda x: (x == 1).sum() / form_window).reset_index(0, drop=True)
-        away_team_win_from = df.groupby('AwayTeam')['ShiftedFTR_Home'].rolling(window=form_window).apply(lambda x: (x == -1).sum() / form_window).reset_index(0, drop=True)
+        home_team_win_from = df.groupby('HomeTeam')['ShiftedFTR_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        away_team_win_from = df.groupby('AwayTeam')['ShiftedFTR_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
 
         df = pd.concat([df, home_team_win_from.rename('HomeTeamWinForm'), away_team_win_from.rename('AwayTeamWinForm')], axis=1)
 
