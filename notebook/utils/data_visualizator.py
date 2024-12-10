@@ -3,6 +3,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay
+import plotly.express as px
 
 def plot_column_distributions(data, cols, figsize=(12, 8)):
     plt.close("all")
@@ -14,18 +15,37 @@ def plot_column_distributions(data, cols, figsize=(12, 8)):
 def plot_goal_difference_distribution(data):
     plt.close("all")
     plt.figure(figsize=(12, 8))
-    sns.histplot(data['GD'], kde=True, shrink=1, discrete=True)
+    sns.histplot(data['GD'], shrink=1, discrete=True)
+    # sns.histplot(data['GD'], kde=True, shrink=1, discrete=True)
     plt.title('Goal Difference Distribution')
     plt.xlabel('Goal Difference')
     plt.ylabel('Frequency')
     plt.show()
 
 def plot_metrics(metrics):
-    plt.close("all")
-    sns.scatterplot(metrics, x='Accuracy', y='Profit', hue='Model')
-    plt.title('Model Metrics')
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Model')
-    plt.show()
+    # plt.close("all")
+    # sns.scatterplot(metrics, x='Accuracy', y='Profit', hue='Model')
+    # plt.title('Model Metrics')
+    # plt.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Model')
+    # plt.show()
+
+    metrics = metrics.reset_index()
+    fig = px.scatter(
+        metrics,
+        x='Accuracy',
+        y='Profit',
+        color='Model',
+        title='Model Metrics',
+        hover_data=['Model']
+    )
+
+    fig.update_layout(
+        legend_title="Model",
+        xaxis_title="Accuracy",
+        yaxis_title="Profit",
+    )
+    
+    fig.show()
 
 def plot_confusion_matrix(cm, classes, title='Confusion matrix', cmap=plt.cm.Blues):
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
@@ -48,6 +68,21 @@ def plot_confusion_matrixes(cms, classes, cmap=plt.cm.Blues):
     plt.tight_layout()
     plt.show()
 
+def plot_roc_auc_curves(roc_aucs):
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    axes = axes.ravel()
+
+    for i, (label, roc_auc) in enumerate(roc_aucs.items()):
+        fpr, tpr = roc_auc["fpr"], roc_auc["tpr"]
+        plt.plot(fpr, tpr, label=f'{label} (AUC = {roc_auc["roc_auc"]:.2f})', ax=axes[i])
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title(f"ROC curve for {label}")
+        plt.legend(loc='lower right')
+    
+    plt.tight_layout()
+    plt.show()
 # def create_league_table(paths : list[str] = None) -> pd.DataFrame:
 #     if paths is None:
 #         paths = [os.path.join(os.path.dirname(__file__), f'../../data/{file}') for file in os.listdir(os.path.join(os.path.dirname(__file__), '../../data')) if file.endswith('.csv')]

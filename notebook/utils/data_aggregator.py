@@ -90,6 +90,29 @@ class DataAggregator():
         return df
     
     def create_form_data(self, df: pd.DataFrame, form_window: int = TEAM_FORM_WINDOW) -> pd.DataFrame:
+        # Map the 'FTR' values to points for the home and away teams
+        df['HomePoints'] = df['FTR'].map({1: 3, 0: 1, -1: 0})
+        df['AwayPoints'] = df['FTR'].map({1: 0, 0: 1, -1: 3})
+
+        # Shift the points to calculate rolling averages for past games
+        df['ShiftedHomePoints'] = df.groupby('HomeTeam')['HomePoints'].shift(1)
+        df['ShiftedAwayPoints'] = df.groupby('AwayTeam')['AwayPoints'].shift(1)
+
+        # Calculate rolling points per game
+        home_team_ppg = df.groupby('HomeTeam')['ShiftedHomePoints'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        away_team_ppg = df.groupby('AwayTeam')['ShiftedAwayPoints'].rolling(window=form_window).mean().reset_index(0, drop=True)
+
+        # Add the new PPG columns to the DataFrame
+        df = pd.concat([df, home_team_ppg.rename('HomeTeamPPG'), away_team_ppg.rename('AwayTeamPPG')], axis=1)
+
+        # Drop intermediate columns
+        df = df.drop(columns=['HomePoints', 'AwayPoints', 'ShiftedHomePoints', 'ShiftedAwayPoints'])
+
+        # Fill missing values with the mean
+        df["HomeTeamPPG"] = df["HomeTeamPPG"].fillna(df.groupby("HomeTeam")["HomeTeamPPG"].transform("mean"))
+        df["AwayTeamPPG"] = df["AwayTeamPPG"].fillna(df.groupby("AwayTeam")["AwayTeamPPG"].transform("mean"))
+
+
         df['ShiftedFTR_Home'] = df.groupby('HomeTeam')['FTR'].shift(1)
         df['ShiftedFTR_Away'] = df.groupby('AwayTeam')['FTR'].shift(1)
 
@@ -142,7 +165,8 @@ class DataAggregator():
                                 mapping={"H": 1, "D": 0, "A": -1}, 
                                 result_column=result_column)
         df = self.create_form_data(df, form_window=form_window)
-        df = self.one_hot_encode_teams(df, home_team_column=home_team_column, away_team_column=away_team_column)
+        # df = self.one_hot_encode_teams(df, home_team_column=home_team_column, away_team_column=away_team_column)
+        df, team_mapping = self.ordinal_encode_teams(df, home_team_column=home_team_column, away_team_column=away_team_column)
 
         df.drop(columns=["Div", "FTHG", "FTAG", "HTHG", "HTAG", "HTR", "Referee", "HS", "AS", "HST", "AST", "HF", "AF", "HC","AC","HY","AY","HR","AR"], inplace=True)
 
