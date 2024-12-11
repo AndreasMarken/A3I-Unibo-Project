@@ -90,6 +90,7 @@ class DataAggregator():
         return df
     
     def create_form_data(self, df: pd.DataFrame, form_window: int = TEAM_FORM_WINDOW) -> pd.DataFrame:
+        weights = np.arange(1, form_window + 1)
         # Map the 'FTR' values to points for the home and away teams
         df['HomePoints'] = df['FTR'].map({1: 3, 0: 1, -1: 0})
         df['AwayPoints'] = df['FTR'].map({1: 0, 0: 1, -1: 3})
@@ -101,6 +102,9 @@ class DataAggregator():
         # Calculate rolling points per game
         home_team_ppg = df.groupby('HomeTeam')['ShiftedHomePoints'].rolling(window=form_window).mean().reset_index(0, drop=True)
         away_team_ppg = df.groupby('AwayTeam')['ShiftedAwayPoints'].rolling(window=form_window).mean().reset_index(0, drop=True)
+
+        # home_team_ppg = df.groupby('HomeTeam')['ShiftedHomePoints'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
+        # away_team_ppg = df.groupby('AwayTeam')['ShiftedAwayPoints'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
 
         # Add the new PPG columns to the DataFrame
         df = pd.concat([df, home_team_ppg.rename('HomeTeamPPG'), away_team_ppg.rename('AwayTeamPPG')], axis=1)
@@ -116,10 +120,13 @@ class DataAggregator():
         df['ShiftedFTR_Home'] = df.groupby('HomeTeam')['FTR'].shift(1)
         df['ShiftedFTR_Away'] = df.groupby('AwayTeam')['FTR'].shift(1)
 
-        home_team_win_from = df.groupby('HomeTeam')['ShiftedFTR_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
-        away_team_win_from = df.groupby('AwayTeam')['ShiftedFTR_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # home_team_win_form = df.groupby('HomeTeam')['ShiftedFTR_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # away_team_win_form = df.groupby('AwayTeam')['ShiftedFTR_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
 
-        df = pd.concat([df, home_team_win_from.rename('HomeTeamWinForm'), away_team_win_from.rename('AwayTeamWinForm')], axis=1)
+        home_team_win_form = df.groupby('HomeTeam')['ShiftedFTR_Home'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
+        away_team_win_form = df.groupby('AwayTeam')['ShiftedFTR_Away'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
+
+        df = pd.concat([df, home_team_win_form.rename('HomeTeamWinForm'), away_team_win_form.rename('AwayTeamWinForm')], axis=1)
 
         df["HomeTeamWinForm"] = df["HomeTeamWinForm"].fillna(df.groupby("HomeTeam")["HomeTeamWinForm"].transform("mean"))
         df["AwayTeamWinForm"] = df["AwayTeamWinForm"].fillna(df.groupby("AwayTeam")["AwayTeamWinForm"].transform("mean"))
@@ -129,8 +136,11 @@ class DataAggregator():
         df['ShiftedFTHG_Home'] = df.groupby('HomeTeam')['FTHG'].shift(1)
         df['ShiftedFTAG_Away'] = df.groupby('AwayTeam')['FTAG'].shift(1)
 
-        home_team_goal_form = df.groupby('HomeTeam')['ShiftedFTHG_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
-        away_team_goal_form = df.groupby('AwayTeam')['ShiftedFTAG_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # home_team_goal_form = df.groupby('HomeTeam')['ShiftedFTHG_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # away_team_goal_form = df.groupby('AwayTeam')['ShiftedFTAG_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
+
+        home_team_goal_form = df.groupby('HomeTeam')['ShiftedFTHG_Home'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
+        away_team_goal_form = df.groupby('AwayTeam')['ShiftedFTAG_Away'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
 
         df = pd.concat([df, home_team_goal_form.rename('HomeTeamGoalForm'), away_team_goal_form.rename('AwayTeamGoalForm')], axis=1)
 
@@ -142,8 +152,11 @@ class DataAggregator():
         df['ShiftedFTAG_Home'] = df.groupby('HomeTeam')['FTAG'].shift(1)
         df['ShiftedFTHG_Away'] = df.groupby('AwayTeam')['FTHG'].shift(1)
 
-        home_team_goal_against_form = df.groupby('HomeTeam')['FTAG'].rolling(window=form_window).mean().reset_index(0, drop=True)
-        away_team_goal_against_form = df.groupby('AwayTeam')['FTHG'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # home_team_goal_against_form = df.groupby('HomeTeam')['ShiftedFTAG_Home'].rolling(window=form_window).mean().reset_index(0, drop=True)
+        # away_team_goal_against_form = df.groupby('AwayTeam')['ShiftedFTHG_Away'].rolling(window=form_window).mean().reset_index(0, drop=True)
+
+        home_team_goal_against_form = df.groupby('HomeTeam')['ShiftedFTAG_Home'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
+        away_team_goal_against_form = df.groupby('AwayTeam')['ShiftedFTHG_Away'].rolling(window=form_window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True).reset_index(0, drop=True)
 
         df = pd.concat([df, home_team_goal_against_form.rename('HomeTeamGoalAgainstForm'), away_team_goal_against_form.rename('AwayTeamGoalAgainstForm')], axis=1)
 
